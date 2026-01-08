@@ -1,0 +1,21 @@
+> init memory 1024
+initialized memory: 1024 bytes
+
+> set allocator first
+Allocator strategy set
+
+> malloc 100
+Allocated block id=1 at address=0x0000000000940d40
+
+> malloc 200
+Allocated block id=2 at address=0x0000000000940da4
+
+> dump
+
+========== MEMORY DUMP ==========
+[0x0000000000940d40 - 0x0000000000940da3] USED (100 bytes)
+[0x0000000000940da4 - 0x0000000000940e6b] USED (200 bytes)
+[0x0000000000940e6c - 0x000000000094113f] FREE (724 bytes)
+--------------------------------
+Total used memory : 300 bytes
+Total free memory : 724 bytes

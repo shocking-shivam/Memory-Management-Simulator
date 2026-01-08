@@ -1,0 +1,11 @@
+> cache_stats
+
+========== CACHE STATS ==========
+[L1] Hits: 2  Misses: 1  HitRate: 66.67%
+[L2] Hits: 0  Misses: 1  HitRate: 0.00%
+[L3] Hits: 0  Misses: 1  HitRate: 0.00%
+---------------------------------
+Total Requests : 3
+Total Cycles   : 128
+AMAT           : 42.67 cycles
+=================================

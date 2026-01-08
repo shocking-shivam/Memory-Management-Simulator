@@ -1,0 +1,35 @@
+# Test Script: Edge Cases and Stress Testing
+
+init memory 512
+set allocator first
+
+# Allocate entire memory in small chunks
+malloc 128
+malloc 128
+malloc 128
+malloc 128
+
+# Allocation should fail (out of memory)
+malloc 64
+
+dump
+
+# Free middle block and test fragmentation
+free 2
+dump
+
+# Switch allocator to buddy
+set allocator buddy
+
+# Allocate non power-of-two size
+malloc 70
+dump
+
+# Cache reuse test
+read 1 0
+read 1 0
+read 1 0
+
+cache_stats
+stats
+shutdown

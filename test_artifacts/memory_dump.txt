@@ -1,0 +1,36 @@
+> dump
+
+========== MEMORY DUMP ==========
+[0x0000000000942fd8 - 0x000000000094303b] USED (100 bytes)
+[0x000000000094303c - 0x0000000000943103] USED (200 bytes)
+[0x0000000000943104 - 0x00000000009433d7] FREE (724 bytes)
+--------------------------------
+Total used memory : 300 bytes
+Total free memory : 724 bytes
+
+> free 1
+Block 1 freed
+
+> dump
+
+========== MEMORY DUMP ==========
+[0x0000000000942fd8 - 0x000000000094303b] FREE (100 bytes)     
+[0x000000000094303c - 0x0000000000943103] USED (200 bytes)     
+[0x0000000000943104 - 0x00000000009433d7] FREE (724 bytes)     
+--------------------------------
+Total used memory : 200 bytes
+Total free memory : 824 bytes
+
+> set allocator buddy
+Allocator strategy set
+
+> malloc 128
+Allocated block id=1 at address=0x0000000000942fe4
+
+> dump
+
+========== MEMORY DUMP ==========
+[0x0000000000942fd8 - 0x0000000000943057] USED (128 bytes)     
+[0x0000000000943058 - 0x00000000009430d7] FREE (128 bytes)     
+[0x00000000009430d8 - 0x00000000009431d7] FREE (256 bytes)     
+[0x00000000009431d8 - 0x00000000009433d7] FREE (512 bytes)     

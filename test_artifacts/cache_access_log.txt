@@ -1,0 +1,22 @@
+> read 2 10
+
+CPU READ Request: 0x94306e
+-> L1 Miss
+-> L2 Miss
+-> L3 Miss (Accessing Main Memory)
+-> Main Memory Access (Total Cost: 126 cycles)
+READ access at address 0x000000000094306e
+
+
+> write 2 20
+
+CPU WRITE Request: 0x943078
+-> L1 Hit (Cost: 1 cycles)
+WRITE access at address 0x0000000000943078
+
+
+> read 2 10
+
+CPU READ Request: 0x94306e
+-> L1 Hit (Cost: 1 cycles)
+READ access at address 0x000000000094306e
