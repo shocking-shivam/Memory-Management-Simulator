@@ -4,62 +4,45 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-/*
-  Buddy allocator (FINAL – FIXED)
-
-  - Power-of-two buddy allocation
-  - Header stored at start of EVERY block
-  - requested_size tracked (internal fragmentation)
-  - Safe re-initialization
-*/
-
+/* Buddy allocator configuration */
 #define MIN_ORDER 5    /* 32 bytes */
-#define MAX_ORDER 22   /* up to 4MB blocks */
+#define MAX_ORDER 22   /* up to 4MB */
 
-/* free list node */
+/* Free list node */
 typedef struct bnode {
     struct bnode *next;
 } bnode_t;
 
-/* header stored at start of EVERY block */
+/* Header stored at start of every block */
 typedef struct {
     uint32_t id;              /* 0 if free */
     uint32_t order;           /* block size = 2^order */
-    uint32_t requested_size;  /* bytes requested by user */
+    uint32_t requested_size;  /* user requested bytes */
 } buddy_hdr_t;
 
-/* globals */
+/* Globals */
 static uint8_t  *buddy_base = NULL;
 static size_t    buddy_size = 0;
 static int       max_order_local = MAX_ORDER;
 static bnode_t **free_lists = NULL;
 static uint32_t  buddy_next_id = 1;
 
-/* =========================
-   INTERNAL HELPERS
-   ========================= */
-
-/* IMPORTANT: header size is NOT charged to user */
-static int order_for_size(size_t bytes) {
-    size_t needed = bytes;
-
+/* Determine minimum order for requested size */
+static int order_for_size(size_t bytes)
+{
     int order = MIN_ORDER;
     size_t sz = 1UL << order;
 
-    while (sz < needed && order <= max_order_local) {
+    while (sz < bytes && order <= max_order_local) {
         order++;
         sz <<= 1;
     }
     return (order > max_order_local) ? -1 : order;
 }
 
-/* =========================
-   INIT / SHUTDOWN
-   ========================= */
-
-int buddy_init_pool(uint8_t *base, size_t bytes) {
-
-    /* 🔥 CRITICAL FIX: always reset old state */
+/* Initialize buddy memory pool */
+int buddy_init_pool(uint8_t *base, size_t bytes)
+{
     if (free_lists) {
         free(free_lists);
         free_lists = NULL;
@@ -74,23 +57,25 @@ int buddy_init_pool(uint8_t *base, size_t bytes) {
 
     max_order_local = o;
 
-    free_lists = calloc(max_order_local + 1, sizeof(bnode_t*));
-    if (!free_lists) return -1;
+    free_lists = calloc(max_order_local + 1, sizeof(bnode_t *));
+    if (!free_lists)
+        return -1;
 
-    /* root block */
-    buddy_hdr_t *root = (buddy_hdr_t*)buddy_base;
+    buddy_hdr_t *root = (buddy_hdr_t *)buddy_base;
     root->id = 0;
     root->order = max_order_local;
     root->requested_size = 0;
 
-    free_lists[max_order_local] = (bnode_t*)buddy_base;
+    free_lists[max_order_local] = (bnode_t *)buddy_base;
     free_lists[max_order_local]->next = NULL;
 
     buddy_next_id = 1;
     return 0;
 }
 
-void buddy_shutdown_pool(void) {
+/* Shutdown buddy pool */
+void buddy_shutdown_pool(void)
+{
     if (free_lists) {
         free(free_lists);
         free_lists = NULL;
@@ -99,35 +84,39 @@ void buddy_shutdown_pool(void) {
     buddy_size = 0;
 }
 
-/* =========================
-   FREE LIST HELPERS
-   ========================= */
-
-static bnode_t *pop_block(int order) {
+/* Pop block from free list */
+static bnode_t *pop_block(int order)
+{
     bnode_t *b = free_lists[order];
-    if (!b) return NULL;
+    if (!b)
+        return NULL;
     free_lists[order] = b->next;
     b->next = NULL;
     return b;
 }
 
-static void push_block(int order, bnode_t *b) {
+/* Push block into free list */
+static void push_block(int order, bnode_t *b)
+{
     b->next = free_lists[order];
     free_lists[order] = b;
 }
 
-static void split_block(int from) {
+/* Split block into two buddies */
+static void split_block(int from)
+{
     bnode_t *b = pop_block(from);
-    if (!b) return;
+    if (!b)
+        return;
 
     size_t sz = 1UL << from;
-    uint8_t *addr = (uint8_t*)b;
+    uint8_t *addr = (uint8_t *)b;
 
-    bnode_t *left  = (bnode_t*)addr;
-    bnode_t *right = (bnode_t*)(addr + (sz >> 1));
+    bnode_t *left  = (bnode_t *)addr;
+    bnode_t *right = (bnode_t *)(addr + (sz >> 1));
 
-    buddy_hdr_t *hl = (buddy_hdr_t*)left;
-    buddy_hdr_t *hr = (buddy_hdr_t*)right;
+    buddy_hdr_t *hl = (buddy_hdr_t *)left;
+    buddy_hdr_t *hr = (buddy_hdr_t *)right;
 
     hl->id = hr->id = 0;
     hl->requested_size = hr->requested_size = 0;
@@ -137,19 +126,21 @@ static void split_block(int from) {
     push_block(from - 1, left);
 }
 
-/* =========================
-   ALLOC
-   ========================= */
-
-uint32_t buddy_alloc(size_t bytes) {
-    if (!buddy_base || bytes == 0) return 0;
+/* Allocate memory */
+uint32_t buddy_alloc(size_t bytes)
+{
+    if (!buddy_base || bytes == 0)
+        return 0;
 
     int want = order_for_size(bytes);
-    if (want < 0) return 0;
+    if (want < 0)
+        return 0;
 
     int i = want;
-    while (i <= max_order_local && !free_lists[i]) i++;
-    if (i > max_order_local) return 0;
+    while (i <= max_order_local && !free_lists[i])
+        i++;
+    if (i > max_order_local)
+        return 0;
 
     while (i > want) {
         split_block(i);
@@ -157,9 +148,10 @@ uint32_t buddy_alloc(size_t bytes) {
     }
 
     bnode_t *b = pop_block(want);
-    if (!b) return 0;
+    if (!b)
+        return 0;
 
-    buddy_hdr_t *hdr = (buddy_hdr_t*)b;
+    buddy_hdr_t *hdr = (buddy_hdr_t *)b;
     hdr->id = buddy_next_id++;
     hdr->order = want;
     hdr->requested_size = bytes;
@@ -167,24 +159,23 @@ uint32_t buddy_alloc(size_t bytes) {
     return hdr->id;
 }
 
-/* =========================
-   FREE
-   ========================= */
-
-int buddy_free(uint32_t id) {
-    if (!buddy_base) return -1;
+/* Free allocated block */
+int buddy_free(uint32_t id)
+{
+    if (!buddy_base)
+        return -1;
 
     uintptr_t cur = (uintptr_t)buddy_base;
     uintptr_t end = cur + buddy_size;
 
     while (cur < end) {
-        buddy_hdr_t *hdr = (buddy_hdr_t*)cur;
+        buddy_hdr_t *hdr = (buddy_hdr_t *)cur;
         size_t block_size = 1UL << hdr->order;
 
         if (hdr->id == id) {
             hdr->id = 0;
             hdr->requested_size = 0;
-            push_block(hdr->order, (bnode_t*)hdr);
+            push_block(hdr->order, (bnode_t *)hdr);
             return 0;
         }
         cur += block_size;
@@ -192,57 +183,32 @@ int buddy_free(uint32_t id) {
     return -1;
 }
 
-/* =========================
-   MEMORY DUMP
-   ========================= */
-
-void buddy_dump(void) {
-    printf("\n========== MEMORY DUMP ==========\n");
-
+/* Return payload address for allocation ID */
+void *buddy_allocated_address(uint32_t id)
+{
     uintptr_t cur = (uintptr_t)buddy_base;
     uintptr_t end = cur + buddy_size;
 
     while (cur < end) {
-        buddy_hdr_t *hdr = (buddy_hdr_t*)cur;
-        size_t block_size = 1UL << hdr->order;
-        uintptr_t block_end = cur + block_size - 1;
-
-        printf("[0x%016lx - 0x%016lx] %s (%zu bytes)\n",
-               (unsigned long)cur,
-               (unsigned long)block_end,
-               hdr->id ? "USED" : "FREE",
-               block_size);
-
-        cur += block_size;
-    }
-}
-
-/* =========================
-   HELPERS FOR CLI / STATS
-   ========================= */
-
-void *buddy_allocated_address(uint32_t id) {
-    uintptr_t cur = (uintptr_t)buddy_base;
-    uintptr_t end = cur + buddy_size;
-
-    while (cur < end) {
-        buddy_hdr_t *hdr = (buddy_hdr_t*)cur;
+        buddy_hdr_t *hdr = (buddy_hdr_t *)cur;
         size_t block_size = 1UL << hdr->order;
 
         if (hdr->id == id)
-            return (void*)(cur + sizeof(buddy_hdr_t)); /* payload */
+            return (void *)(cur + sizeof(buddy_hdr_t));
 
         cur += block_size;
     }
     return NULL;
 }
 
-size_t buddy_allocated_size(uint32_t id) {
+/* Return requested allocation size */
+size_t buddy_allocated_size(uint32_t id)
+{
     uintptr_t cur = (uintptr_t)buddy_base;
     uintptr_t end = cur + buddy_size;
 
     while (cur < end) {
-        buddy_hdr_t *hdr = (buddy_hdr_t*)cur;
+        buddy_hdr_t *hdr = (buddy_hdr_t *)cur;
         size_t block_size = 1UL << hdr->order;
 
         if (hdr->id == id)
@@ -253,10 +219,6 @@ size_t buddy_allocated_size(uint32_t id) {
     return 0;
 }
 
-/* required by stats */
+/* Read-only accessors for dump / stats */
 uint8_t *buddy_get_base(void) { return buddy_base; }
 size_t   buddy_get_size(void) { return buddy_size; }
-
-void buddy_stats_print(void) {
-    buddy_dump();
-}
