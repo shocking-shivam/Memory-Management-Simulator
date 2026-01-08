@@ -33,7 +33,8 @@ size_t   allocator_get_block_count(void) { return block_count; }
 
 /* ================= INIT / SHUTDOWN ================= */
 
-int mem_init(size_t bytes) {
+int mem_init(size_t bytes)
+{
     if (mem_base) {
         fprintf(stderr, "memory already initialized\n");
         return -1;
@@ -45,7 +46,6 @@ int mem_init(size_t bytes) {
 
     mem_total = bytes;
 
-    /* Initialize FIT metadata */
     blocks[0] = (block_t){
         .offset = 0,
         .size = bytes,
@@ -58,15 +58,14 @@ int mem_init(size_t bytes) {
 
     stats_init(mem_total);
 
-    /* Initialize buddy ONLY if selected */
-    if (current_algo == ALGO_BUDDY) {
+    if (current_algo == ALGO_BUDDY)
         buddy_init_pool(mem_base, mem_total);
-    }
 
     return 0;
 }
 
-void mem_shutdown(void) {
+void mem_shutdown(void)
+{
     if (!mem_base)
         return;
 
@@ -83,30 +82,29 @@ void mem_shutdown(void) {
 
 /* ================= CONFIG ================= */
 
-void set_allocator_algo(algo_t a) {
+void set_allocator_algo(algo_t a)
+{
     if (a == current_algo)
         return;
 
-    /* Leaving buddy */
-    if (current_algo == ALGO_BUDDY) {
+    if (current_algo == ALGO_BUDDY)
         buddy_shutdown_pool();
-    }
 
     current_algo = a;
 
-    /* Entering buddy */
-    if (current_algo == ALGO_BUDDY && mem_base) {
+    if (current_algo == ALGO_BUDDY && mem_base)
         buddy_init_pool(mem_base, mem_total);
-    }
 }
 
-algo_t get_allocator_algo(void) {
+algo_t get_allocator_algo(void)
+{
     return current_algo;
 }
 
 /* ================= INTERNAL HELPERS ================= */
 
-static int find_block(size_t bytes) {
+static int find_block(size_t bytes)
+{
     int best = -1;
 
     for (size_t i = 0; i < block_count; i++) {
@@ -130,13 +128,13 @@ static int find_block(size_t bytes) {
 
 /* ================= ALLOC ================= */
 
-uint32_t mem_alloc(size_t bytes) {
+uint32_t mem_alloc(size_t bytes)
+{
     if (!mem_base || bytes == 0)
         return 0;
 
     stats_record_alloc_attempt();
 
-    /* -------- BUDDY PATH -------- */
     if (current_algo == ALGO_BUDDY) {
         uint32_t id = buddy_alloc(bytes);
         if (id)
@@ -146,7 +144,6 @@ uint32_t mem_alloc(size_t bytes) {
         return id;
     }
 
-    /* -------- FIT PATH -------- */
     int idx = find_block(bytes);
     if (idx < 0) {
         stats_record_alloc_failure();
@@ -180,8 +177,8 @@ uint32_t mem_alloc(size_t bytes) {
 
 /* ================= FREE ================= */
 
-int mem_free(uint32_t id) {
-    /* -------- BUDDY PATH -------- */
+int mem_free(uint32_t id)
+{
     if (current_algo == ALGO_BUDDY) {
         int r = buddy_free(id);
         if (r == 0)
@@ -189,7 +186,6 @@ int mem_free(uint32_t id) {
         return r;
     }
 
-    /* -------- FIT PATH -------- */
     for (size_t i = 0; i < block_count; i++) {
         if (!blocks[i].free && blocks[i].id == id) {
 
@@ -199,7 +195,6 @@ int mem_free(uint32_t id) {
 
             stats_record_free();
 
-            /* Coalesce forward */
             if (i + 1 < block_count && blocks[i + 1].free) {
                 blocks[i].size += blocks[i + 1].size;
                 memmove(&blocks[i + 1], &blocks[i + 2],
@@ -207,7 +202,6 @@ int mem_free(uint32_t id) {
                 block_count--;
             }
 
-            /* Coalesce backward */
             if (i > 0 && blocks[i - 1].free) {
                 blocks[i - 1].size += blocks[i].size;
                 memmove(&blocks[i], &blocks[i + 1],
@@ -223,15 +217,13 @@ int mem_free(uint32_t id) {
 
 /* ================= DUMP / STATS ================= */
 
-void mem_dump(void) {
-    if (current_algo == ALGO_BUDDY)
-        buddy_dump();
-    else {
-        extern void memory_dump(void);
-        memory_dump();
-    }
+void mem_dump(void)
+{
+    extern void memory_dump(void);
+    memory_dump();
 }
 
-void mem_stats_print(void) {
+void mem_stats_print(void)
+{
     stats_print();
 }
